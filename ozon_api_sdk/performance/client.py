@@ -1,10 +1,15 @@
+from __future__ import annotations
+
 import time
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import httpx
 
-from ozon_api_sdk.base import BaseAPIClient
+from ozon_api_sdk.base import BaseAPIClient, RetryConfig
 from ozon_api_sdk.exceptions import OzonAuthError
+
+if TYPE_CHECKING:
+    from ozon_api_sdk.performance.campaigns import CampaignsAPI
 
 
 class PerformanceAPIClient(BaseAPIClient):
@@ -14,12 +19,40 @@ class PerformanceAPIClient(BaseAPIClient):
     Token is automatically refreshed when expired.
     API documentation: https://docs.ozon.ru/api/performance/
 
+    Features:
+        - Automatic token refresh before expiry
+        - Retry with exponential backoff on 429/5xx errors
+        - Rate limiting via semaphore
+        - Progress callbacks for report polling
+
     Usage:
         async with PerformanceAPIClient(
             client_id="your-client-id",
             client_secret="your-client-secret"
         ) as client:
+            # Via subclients
+            campaigns = await client.campaigns.get_campaigns()
+            report = await client.campaigns.get_statistics_report(campaign_ids, date_from, date_to)
+
+            # Direct API call
             response = await client.get("/api/client/campaign")
+
+        # With custom retry configuration
+        def on_retry(attempt, delay, error):
+            print(f"Retry {attempt} in {delay:.1f}s: {error}")
+
+        retry_config = RetryConfig(
+            max_retries=10,
+            base_delay=2.0,
+            on_retry=on_retry,
+        )
+
+        async with PerformanceAPIClient(
+            client_id="...",
+            client_secret="...",
+            retry_config=retry_config,
+        ) as client:
+            ...
     """
 
     BASE_URL = "https://api-performance.ozon.ru"
@@ -32,6 +65,7 @@ class PerformanceAPIClient(BaseAPIClient):
         *,
         max_concurrent_requests: int = 10,
         timeout: float = 30.0,
+        retry_config: RetryConfig | None = None,
     ) -> None:
         """Initialize Performance API client.
 
@@ -40,16 +74,22 @@ class PerformanceAPIClient(BaseAPIClient):
             client_secret: Ozon Performance API client secret.
             max_concurrent_requests: Max parallel requests (default: 10).
             timeout: Request timeout in seconds (default: 30).
+            retry_config: Retry configuration for 429/5xx errors.
+                         Default: 5 retries with exponential backoff.
         """
         super().__init__(
             base_url=self.BASE_URL,
             max_concurrent_requests=max_concurrent_requests,
             timeout=timeout,
+            retry_config=retry_config,
         )
         self._perf_client_id = client_id
         self._perf_client_secret = client_secret
         self._access_token: str | None = None
         self._token_expires_at: float = 0
+
+        # Lazy-initialized subclients
+        self._campaigns: CampaignsAPI | None = None
 
     async def _on_client_ready(self) -> None:
         """Fetch access token when client is initialized."""
@@ -116,3 +156,12 @@ class PerformanceAPIClient(BaseAPIClient):
         """Make request with automatic token refresh."""
         await self._ensure_token_valid()
         return await super()._request(method, endpoint, **kwargs)
+
+    @property
+    def campaigns(self) -> CampaignsAPI:
+        """Campaigns API subclient."""
+        if self._campaigns is None:
+            from ozon_api_sdk.performance.campaigns import CampaignsAPI
+
+            self._campaigns = CampaignsAPI(self)
+        return self._campaigns

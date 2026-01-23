@@ -20,10 +20,22 @@ Docs:
 class SellerEndpoints:
     """Seller API endpoint URLs."""
 
-    pass
+    # Products
+    PRODUCT_LIST = "/v2/product/list"
+    PRODUCT_INFO_LIST = "/v2/product/info/list"
+    GENERATE_PRODUCT_TO_CSV = "/v1/product/list/csv"
+    GET_PRODUCT_TO_CSV = "/v1/product/list/csv/info"
+
+    # Finance
+    TRANSACTION_LIST = "/v3/finance/transaction/list"
+    TRANSACTION_TOTALS = "/v3/finance/transaction/totals"
 
 
 class PerformanceEndpoints:
     """Performance API endpoint URLs."""
 
-    pass
+    # Campaigns
+    CLIENT_CAMPAIGN = "/api/client/campaign"
+    STATISTICS = "/api/client/statistics"
+    STATISTICS_REPORT = "/api/client/statistics/report"
+    STATISTICS_REPORT_STATUS = "/api/client/statistics/"
