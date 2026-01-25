@@ -7,6 +7,7 @@ from ozon_api_sdk.base import BaseAPIClient, RetryConfig
 if TYPE_CHECKING:
     from ozon_api_sdk.seller.products import ProductsAPI
     from ozon_api_sdk.seller.finance import FinanceAPI
+    from ozon_api_sdk.seller.promotion import PromotionAPI
 
 
 class SellerAPIClient(BaseAPIClient):
@@ -62,6 +63,7 @@ class SellerAPIClient(BaseAPIClient):
         # Lazy-initialized subclients
         self._products: ProductsAPI | None = None
         self._finance: FinanceAPI | None = None
+        self._promotion: PromotionAPI | None = None
 
     def _get_headers(self) -> dict[str, str]:
         return {
@@ -87,3 +89,12 @@ class SellerAPIClient(BaseAPIClient):
 
             self._finance = FinanceAPI(self)
         return self._finance
+
+    @property
+    def promotion(self) -> PromotionAPI:
+        """Promotion API subclient."""
+        if self._promotion is None:
+            from ozon_api_sdk.seller.promotion import PromotionAPI
+
+            self._promotion = PromotionAPI(self)
+        return self._promotion

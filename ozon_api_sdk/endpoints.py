@@ -30,6 +30,13 @@ class SellerEndpoints:
     TRANSACTION_LIST = "/v3/finance/transaction/list"
     TRANSACTION_TOTALS = "/v3/finance/transaction/totals"
 
+    # Promotions
+    ACTIONS_LIST = "/v1/actions"
+    ACTIONS_CANDIDATES = "/v1/actions/candidates"
+    ACTIONS_PRODUCTS = "/v1/actions/products"
+    ACTIONS_PRODUCTS_ACTIVATE = "/v1/actions/products/activate"
+    ACTIONS_PRODUCTS_DEACTIVATE = "/v1/actions/products/deactivate"
+
 
 class PerformanceEndpoints:
     """Performance API endpoint URLs."""
