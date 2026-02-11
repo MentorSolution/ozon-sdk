@@ -6,47 +6,16 @@ from datetime import datetime
 from typing import TYPE_CHECKING, Any, Callable
 
 from ozon_api_sdk.base import ReportPollingProgress
+from ozon_api_sdk.constants import AdvertisingType, CampaignState, StatisticsGroupBy
 from ozon_api_sdk.endpoints import PerformanceEndpoints
 
 if TYPE_CHECKING:
     from ozon_api_sdk.performance.client import PerformanceAPIClient
 
-# Type alias for progress callback
 ProgressCallback = Callable[[ReportPollingProgress], None]
-
 
 class CampaignsAPI:
     """Campaigns API subclient for Performance API."""
-
-    # Campaign states
-    STATE_UNKNOWN = "CAMPAIGN_STATE_UNKNOWN"
-    STATE_RUNNING = "CAMPAIGN_STATE_RUNNING"
-    STATE_PLANNED = "CAMPAIGN_STATE_PLANNED"
-    STATE_STOPPED = "CAMPAIGN_STATE_STOPPED"
-    STATE_INACTIVE = "CAMPAIGN_STATE_INACTIVE"
-    STATE_ARCHIVED = "CAMPAIGN_STATE_ARCHIVED"
-    STATE_MODERATION_DRAFT = "CAMPAIGN_STATE_MODERATION_DRAFT"
-    STATE_MODERATION_IN_PROGRESS = "CAMPAIGN_STATE_MODERATION_IN_PROGRESS"
-    STATE_MODERATION_FAILED = "CAMPAIGN_STATE_MODERATION_FAILED"
-    STATE_FINISHED = "CAMPAIGN_STATE_FINISHED"
-
-    # Advertising object types
-    ADV_TYPE_SKU = "SKU"
-    ADV_TYPE_SEARCH_PROMO = "SEARCH_PROMO"
-    ADV_TYPE_BANNER = "BANNER"
-    ADV_TYPE_BRAND_SHELF = "BRAND_SHELF"
-    ADV_TYPE_VIDEO = "VIDEO"
-
-    # Payment types
-    PAYMENT_CPC = "CPC"
-    PAYMENT_CPM = "CPM"
-    PAYMENT_CPO = "CPO"
-
-    # Group by options for statistics
-    GROUP_BY_DATE = "DATE"
-    GROUP_BY_NO_GROUP_BY = "NO_GROUP_BY"
-    GROUP_BY_START_OF_WEEK = "START_OF_WEEK"
-    GROUP_BY_START_OF_MONTH = "START_OF_MONTH"
 
     def __init__(self, client: PerformanceAPIClient) -> None:
         self._client = client
@@ -74,7 +43,7 @@ class CampaignsAPI:
             List of campaign dictionaries.
         """
         if adv_types is None:
-            adv_types = (self.ADV_TYPE_SKU, self.ADV_TYPE_SEARCH_PROMO)
+            adv_types = (AdvertisingType.SKU, AdvertisingType.SEARCH_PROMO)
 
         page = 1
         result: list[dict[str, Any]] = []
@@ -131,7 +100,7 @@ class CampaignsAPI:
     async def get_campaign_by_id(
         self,
         campaign_id: str,
-        adv_object_type: str = ADV_TYPE_SKU,
+        adv_object_type: str = AdvertisingType.SKU,
     ) -> dict[str, Any]:
         """Fetch single campaign by ID.
 
@@ -148,7 +117,7 @@ class CampaignsAPI:
         params = {
             "campaignIds": [campaign_id],
             "advObjectType": adv_object_type,
-            "state": self.STATE_UNKNOWN,
+            "state": CampaignState.UNKNOWN,
         }
 
         response = await self._client.get(
@@ -167,7 +136,7 @@ class CampaignsAPI:
         campaign_ids: list[str],
         date_from: datetime,
         date_to: datetime,
-        group_by: str = GROUP_BY_DATE,
+        group_by: str = StatisticsGroupBy.DATE,
         max_attempts: int = 30,
         poll_interval: float = 10.0,
         on_progress: ProgressCallback | None = None,
