@@ -2,7 +2,7 @@ from datetime import datetime, timedelta
 
 import pytest
 
-pytestmark = pytest.mark.integration
+pytestmark = [pytest.mark.integration, pytest.mark.seller]
 
 
 async def test_get_transactions(seller_client, save_response):

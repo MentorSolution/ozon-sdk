@@ -2,7 +2,7 @@ from datetime import datetime, timedelta
 
 import pytest
 
-pytestmark = pytest.mark.integration
+pytestmark = [pytest.mark.integration, pytest.mark.performance]
 
 
 async def test_get_campaigns(performance_client, save_response):

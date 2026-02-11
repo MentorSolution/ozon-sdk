@@ -2,7 +2,7 @@ import pytest
 
 from ozon_api_sdk.constants import ProductVisibility
 
-pytestmark = pytest.mark.integration
+pytestmark = [pytest.mark.integration, pytest.mark.seller]
 
 
 async def test_get_products_by_visibility(seller_client, save_response):

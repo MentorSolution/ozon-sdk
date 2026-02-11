@@ -21,10 +21,8 @@ class SellerEndpoints:
     """Seller API endpoint URLs."""
 
     # Products
-    PRODUCT_LIST = "/v2/product/list"
-    PRODUCT_INFO_LIST = "/v2/product/info/list"
-    GENERATE_PRODUCT_TO_CSV = "/v1/product/list/csv"
-    GET_PRODUCT_TO_CSV = "/v1/product/list/csv/info"
+    PRODUCT_LIST = "/v3/product/list"
+    PRODUCT_INFO_LIST = "/v3/product/info/list"
 
     # Finance
     TRANSACTION_LIST = "/v3/finance/transaction/list"

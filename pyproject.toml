@@ -24,4 +24,8 @@ dev = [
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
-markers = ["integration: real API calls (need credentials)"]
+markers = [
+    "integration: real API calls (need credentials)",
+    "seller: Seller API tests (need OZON_SELLER_CLIENT_ID and OZON_SELLER_API_KEY)",
+    "performance: Performance API tests (need OZON_PERF_CLIENT_ID and OZON_PERF_CLIENT_SECRET)",
+]
