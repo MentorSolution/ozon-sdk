@@ -6,6 +6,7 @@ from types import TracebackType
 from typing import Any, Callable, Self
 
 import httpx
+import orjson
 
 from ozon_api_sdk.exceptions import OzonAPIError, OzonAuthError, OzonRateLimitError
 
@@ -134,7 +135,7 @@ class BaseAPIClient(ABC):
             If exception is not None, it should be raised after retry logic.
         """
         try:
-            data = response.json()
+            data = orjson.loads(response.content)
         except Exception:
             data = {}
 
