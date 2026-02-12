@@ -1,7 +1,10 @@
 from __future__ import annotations
 
 import asyncio
+import csv
+import io
 import time
+import zipfile
 from datetime import datetime
 from typing import TYPE_CHECKING, Any, Callable
 
@@ -140,15 +143,16 @@ class CampaignsAPI:
         max_attempts: int = 30,
         poll_interval: float = 10.0,
         on_progress: ProgressCallback | None = None,
-    ) -> dict[str, Any]:
+    ) -> list[dict[str, Any]]:
         """Request statistics report, poll for completion, and return CSV data.
 
         Performance API report generation is asynchronous - this method handles
         the full lifecycle: request → poll → download.
 
-        Note: Ozon API returns reports in different formats:
-            - CSV text (if single campaign in list)
-            - ZIP archive (if multiple campaigns in list)
+        Note: CSV reports are automatically parsed to JSON format.
+        Ozon API returns different formats based on campaign count:
+            - CSV text (single campaign) → automatically parsed
+            - ZIP archive (multiple campaigns) → each CSV extracted and parsed
 
         Args:
             campaign_ids: List of campaign IDs (max 10).
@@ -161,11 +165,22 @@ class CampaignsAPI:
                         Use this to track progress, log status, or update UI.
 
         Returns:
-            Dict with keys:
-                - "content": Raw bytes (CSV text or ZIP binary)
-                - "content_type": Content-Type header (e.g., "text/csv", "application/zip")
-                - "format": Either "csv" or "zip"
-                - "text": Decoded CSV text (None for ZIP format)
+            List of campaign reports:
+                [
+                    {
+                        "campaign_id": "123",
+                        "campaign_header": "; Кампания по продвижению товаров № 123...",
+                        "data": [
+                            {"sku": "...", "Название товара": "...", "Показы": "100", ...},
+                            ...
+                        ]
+                    },
+                    {
+                        "campaign_id": "456",
+                        "campaign_header": "...",
+                        "data": [...]
+                    }
+                ]
 
         Raises:
             ValueError: If campaign_ids > 10 or report generation fails.
@@ -173,24 +188,23 @@ class CampaignsAPI:
 
         Example:
             report = await client.campaigns.get_statistics_report(
-                campaign_ids=["123"],
+                campaign_ids=["123", "456"],
                 date_from=datetime(2024, 1, 1),
                 date_to=datetime(2024, 1, 31),
             )
 
-            if report["format"] == "csv":
-                # Single campaign - CSV text
-                csv_content = report["text"]
-                print(csv_content)
-            else:
-                # Multiple campaigns - ZIP archive
-                import zipfile
-                import io
+            # Iterate through campaigns
+            for campaign in report:
+                campaign_id = campaign["campaign_id"]
+                rows = campaign["data"]
+                print(f"Campaign {campaign_id}: {len(rows)} rows")
 
-                with zipfile.ZipFile(io.BytesIO(report["content"])) as zf:
-                    for filename in zf.namelist():
-                        csv_data = zf.read(filename).decode("utf-8")
-                        print(f"Campaign {filename}: {csv_data}")
+                for row in rows:
+                    print(f"  SKU: {row['sku']}, Показы: {row['Показы']}, Клики: {row['Клики']}")
+
+            # Or access specific campaign
+            campaign_123 = next(c for c in report if c["campaign_id"] == "123")
+            total_shows = sum(int(row.get("Показы", 0) or 0) for row in campaign_123["data"])
         """
         if len(campaign_ids) > 10:
             raise ValueError(f"campaign_ids > 10. Got {len(campaign_ids)}")
@@ -224,7 +238,7 @@ class CampaignsAPI:
                 on_progress(progress)
 
             if status == "OK":
-                return await self._download_report(report_uuid)
+                return await self._download_report(report_uuid, campaign_ids)
 
             if not is_last_attempt:
                 await asyncio.sleep(poll_interval)
@@ -258,19 +272,63 @@ class CampaignsAPI:
         response = await self._client.get(url)
         return response.get("state")
 
-    async def _download_report(self, report_uuid: str) -> dict[str, Any]:
-        """Download completed report (CSV or ZIP format).
+    @staticmethod
+    def _parse_csv_to_json(csv_text: str, campaign_id: str | None = None) -> dict[str, Any]:
+        """Parse Ozon CSV report to JSON format.
 
-        Performance API returns different formats based on campaign count:
+        Args:
+            csv_text: CSV content as string.
+            campaign_id: Campaign ID for this report.
+
+        Returns:
+            Dict with campaign data and parsed rows.
+        """
+        lines = csv_text.strip().split("\n")
+
+        # Первая строка - заголовок кампании (начинается с ;)
+        campaign_header = lines[0].strip() if lines else ""
+
+        # Вторая строка - названия колонок
+        if len(lines) < 2:
+            return {"campaign_id": campaign_id, "header": campaign_header, "data": []}
+
+        # Парсим CSV с разделителем ;
+        reader = csv.DictReader(
+            io.StringIO("\n".join(lines[1:])),  # Пропускаем первую строку
+            delimiter=";",
+        )
+
+        rows = []
+        for row in reader:
+            # Очищаем пробелы в ключах и значениях
+            cleaned_row = {k.strip(): v.strip() for k, v in row.items() if k}
+            rows.append(cleaned_row)
+
+        return {
+            "campaign_id": campaign_id,
+            "campaign_header": campaign_header,
+            "data": rows,
+        }
+
+    async def _download_report(
+        self, report_uuid: str, campaign_ids: list[str]
+    ) -> list[dict[str, Any]]:
+        """Download completed report and parse to JSON.
+
+        Performance API returns different formats:
         - CSV text if single campaign
         - ZIP archive if multiple campaigns
 
+        Args:
+            report_uuid: Report UUID from API.
+            campaign_ids: List of campaign IDs from request.
+
         Returns:
-            Dict with keys:
-                - "content": Raw bytes content (CSV text or ZIP binary)
-                - "content_type": Response content-type header
-                - "format": Either "csv" or "zip"
-                - "text": Decoded text (only for CSV format)
+            List of campaign reports:
+                [
+                    {"campaign_id": "123", "campaign_header": "...", "data": [...]},
+                    {"campaign_id": "456", "campaign_header": "...", "data": [...]},
+                ]
         """
         response = await self._client._request_raw(
             "GET",
@@ -279,24 +337,27 @@ class CampaignsAPI:
         )
 
         content_type = response.headers.get("content-type", "").lower()
+        campaigns_list: list[dict[str, Any]] = []
 
-        # Определяем формат по content-type
         if "zip" in content_type or "application/zip" in content_type:
-            # ZIP архив - возвращаем бинарные данные
-            return {
-                "content": response.content,
-                "content_type": response.headers.get("content-type"),
-                "format": "zip",
-                "text": None,
-            }
+            # ZIP архив - распаковать и парсить каждый CSV
+            with zipfile.ZipFile(io.BytesIO(response.content)) as zf:
+                for filename in zf.namelist():
+                    # Имя файла: "123.csv" → campaign_id: "123"
+                    campaign_id = filename.replace(".csv", "")
+                    csv_bytes = zf.read(filename)
+                    csv_text = csv_bytes.decode("utf-8")
+
+                    campaigns_list.append(self._parse_csv_to_json(csv_text, campaign_id))
         else:
-            # CSV текст - возвращаем и bytes и декодированный текст
-            return {
-                "content": response.content,
-                "content_type": response.headers.get("content-type"),
-                "format": "csv",
-                "text": response.text,
-            }
+            # CSV текст - используем первый campaign_id из запроса
+            csv_text = response.text
+            campaign_id = campaign_ids[0] if campaign_ids else "unknown"
+            parsed = self._parse_csv_to_json(csv_text, campaign_id)
+
+            campaigns_list.append(parsed)
+
+        return campaigns_list
 
     @staticmethod
     def _datetime_to_start_of_day_iso(dt: datetime) -> str:

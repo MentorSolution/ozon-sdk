@@ -69,21 +69,25 @@ async def test_get_statistics_report(performance_client, save_response):
     console.print("✅ [bold green]Report ready![/bold green]")
 
     # Отобразить информацию о полученном отчете
-    console.print(f"📄 [bold]Format:[/bold] [cyan]{result['format'].upper()}[/cyan]")
-    console.print(f"📋 [bold]Content-Type:[/bold] [dim]{result['content_type']}[/dim]")
+    console.print(f"📊 [bold]Campaigns:[/bold] [cyan]{len(result)}[/cyan]")
 
-    if result["format"] == "csv":
-        console.print(f"📊 [bold]CSV size:[/bold] [yellow]{len(result['text'])} characters[/yellow]")
-        # Показать первые 3 строки CSV
-        lines = result["text"].split("\n")[:3]
-        console.print("\n[dim]Preview:[/dim]")
-        for line in lines:
-            console.print(f"  [dim]{line}[/dim]")
-    else:
-        console.print(f"📦 [bold]ZIP size:[/bold] [yellow]{len(result['content'])} bytes[/yellow]")
+    for campaign in result:
+        campaign_id = campaign["campaign_id"]
+        console.print(f"\n[bold cyan]Campaign {campaign_id}:[/bold cyan]")
+        console.print(f"  [dim]Header:[/dim] {campaign['campaign_header'][:80]}...")
+        console.print(f"  [bold]Rows:[/bold] [yellow]{len(campaign['data'])}[/yellow]")
+
+        # Показать первые 3 строки данных
+        if campaign["data"]:
+            console.print("  [dim]Sample data:[/dim]")
+            for row in campaign["data"][:3]:
+                sku = row.get("sku", "N/A")
+                shows = row.get("Показы", "0")
+                clicks = row.get("Клики", "0")
+                console.print(f"    SKU: [cyan]{sku}[/cyan], Показы: {shows}, Клики: {clicks}")
 
     console.rule()
     save_response(result)
-    assert isinstance(result, dict)
-    assert "format" in result
-    assert result["format"] in ["csv", "zip"]
+    assert isinstance(result, list)
+    assert len(result) > 0
+    assert all("campaign_id" in c and "data" in c for c in result)
