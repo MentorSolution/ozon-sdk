@@ -35,6 +35,9 @@ class SellerEndpoints:
     ACTIONS_PRODUCTS_ACTIVATE = "/v1/actions/products/activate"
     ACTIONS_PRODUCTS_DEACTIVATE = "/v1/actions/products/deactivate"
 
+    # Analytics
+    ANALYTICS_DATA = "/v1/analytics/data"
+
 
 class PerformanceEndpoints:
     """Performance API endpoint URLs."""

@@ -6,6 +6,8 @@ Usage:
     await client.products.get_products_by_visibility(ProductVisibility.ARCHIVED)
 """
 
+from typing import Literal
+
 
 class ProductVisibility:
     """Product visibility filter values for /v2/product/list."""
@@ -36,3 +38,17 @@ class ProductVisibility:
     PARTIAL_APPROVED = "PARTIAL_APPROVED"
     IMAGE_ABSENT = "IMAGE_ABSENT"
     MODERATION_BLOCK = "MODERATION_BLOCK"
+
+
+Dimension = Literal[
+    "sku",
+    "spu",
+    "day",
+    "week",
+    "month"
+]
+
+Metrics = Literal[
+    "revenue",
+    "ordered_units"
+]
