@@ -14,13 +14,13 @@ Async Python SDK for Ozon APIs (Seller API and Performance API).
 ## Installation
 
 ```bash
-pip install ozon-api-sdk @ git+https://github.com/Kashikuroni/ozon-api-sdk.git
+pip install ozon-api-sdk @ git+https://github.com/MentorSolution/ozon-sdk.git
 ```
 
 Or add to `pyproject.toml`:
 ```toml
 dependencies = [
-    "ozon-api-sdk @ git+https://github.com/Kashikuroni/ozon-api-sdk.git",
+    "ozon-api-sdk @ git+https://github.com/MentorSolution/ozon-sdk.git",
 ]
 ```
 

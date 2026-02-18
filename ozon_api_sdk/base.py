@@ -6,6 +6,7 @@ from types import TracebackType
 from typing import Any, Callable, Self
 
 import httpx
+import orjson
 
 from ozon_api_sdk.exceptions import OzonAPIError, OzonAuthError, OzonRateLimitError
 
@@ -134,7 +135,7 @@ class BaseAPIClient(ABC):
             If exception is not None, it should be raised after retry logic.
         """
         try:
-            data = response.json()
+            data = orjson.loads(response.content)
         except Exception:
             data = {}
 
@@ -260,3 +261,47 @@ class BaseAPIClient(ABC):
     ) -> dict[str, Any]:
         """Make GET request."""
         return await self._request("GET", endpoint, params=params, **kwargs)
+
+    async def _request_raw(
+        self,
+        method: str,
+        endpoint: str,
+        *,
+        json: dict[str, Any] | None = None,
+        params: dict[str, Any] | None = None,
+        headers: dict[str, str] | None = None,
+    ) -> httpx.Response:
+        """Make HTTP request and return raw Response without JSON parsing.
+
+        Useful for endpoints that return non-JSON content (CSV, binary, etc.).
+        Includes rate limiting via semaphore and automatic headers.
+
+        Args:
+            method: HTTP method (GET, POST, etc.).
+            endpoint: API endpoint URL.
+            json: JSON body for request.
+            params: Query parameters.
+            headers: Additional headers.
+
+        Returns:
+            Raw httpx.Response object.
+
+        Raises:
+            RuntimeError: If client not initialized.
+            httpx.HTTPStatusError: On HTTP error status.
+        """
+        if not self._client:
+            raise RuntimeError("Client not initialized. Use 'async with' context manager.")
+
+        merged_headers = {**self._get_headers(), **(headers or {})}
+
+        async with self._semaphore:
+            response = await self._client.request(
+                method=method.upper(),
+                url=endpoint,
+                json=json,
+                params=params,
+                headers=merged_headers,
+            )
+            response.raise_for_status()
+            return response

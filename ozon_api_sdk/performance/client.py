@@ -4,6 +4,7 @@ import time
 from typing import TYPE_CHECKING, Any
 
 import httpx
+import orjson
 
 from ozon_api_sdk.base import BaseAPIClient, RetryConfig
 from ozon_api_sdk.exceptions import OzonAuthError
@@ -114,7 +115,7 @@ class PerformanceAPIClient(BaseAPIClient):
                 },
             )
             response.raise_for_status()
-            data = response.json()
+            data = orjson.loads(response.content)
 
             self._access_token = data["access_token"]
             expires_in = data.get("expires_in", 1800)  # Default 30 min
