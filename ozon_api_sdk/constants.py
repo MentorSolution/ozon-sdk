@@ -7,6 +7,8 @@ Usage:
     campaigns = await client.campaigns.get_campaigns(states=[CampaignState.RUNNING])
 """
 
+from typing import Literal
+
 
 class ProductVisibility:
     """Product visibility filter values for /v2/product/list."""
@@ -38,6 +40,19 @@ class ProductVisibility:
     IMAGE_ABSENT = "IMAGE_ABSENT"
     MODERATION_BLOCK = "MODERATION_BLOCK"
 
+
+Dimension = Literal[
+    "sku",
+    "spu",
+    "day",
+    "week",
+    "month"
+]
+
+Metrics = Literal[
+    "revenue",
+    "ordered_units"
+]
 
 class CampaignState:
     """Campaign state values for Performance API campaigns."""

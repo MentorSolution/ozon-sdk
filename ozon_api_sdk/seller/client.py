@@ -8,6 +8,7 @@ if TYPE_CHECKING:
     from ozon_api_sdk.seller.products import ProductsAPI
     from ozon_api_sdk.seller.finance import FinanceAPI
     from ozon_api_sdk.seller.promotion import PromotionAPI
+    from ozon_api_sdk.seller.analytics import AnalyticsAPI
 
 
 class SellerAPIClient(BaseAPIClient):
@@ -64,6 +65,7 @@ class SellerAPIClient(BaseAPIClient):
         self._products: ProductsAPI | None = None
         self._finance: FinanceAPI | None = None
         self._promotion: PromotionAPI | None = None
+        self._analytics: AnalyticsAPI | None = None
 
     def _get_headers(self) -> dict[str, str]:
         return {
@@ -98,3 +100,11 @@ class SellerAPIClient(BaseAPIClient):
 
             self._promotion = PromotionAPI(self)
         return self._promotion
+
+    @property
+    def analytics(self) -> AnalyticsAPI:
+        if self._analytics is None:
+            from ozon_api_sdk.seller.analytics import AnalyticsAPI
+
+            self._analytics = AnalyticsAPI(self)
+        return self._analytics
